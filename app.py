@@ -1,10 +1,13 @@
 # app.py
-from flask import Flask, jsonify, abort, send_file
+from flask import Flask, jsonify, send_file
 import os
 from sqlalchemy import create_engine, text
 
 _engine = None
 
+# -----------------------------
+# Database Connection
+# -----------------------------
 def get_engine():
     global _engine
     if _engine is not None:
@@ -17,6 +20,10 @@ def get_engine():
     _engine = create_engine(db_url, pool_pre_ping=True)
     return _engine
 
+
+# -----------------------------
+# Flask App
+# -----------------------------
 def create_app():
     app = Flask(__name__)
 
@@ -28,7 +35,9 @@ def create_app():
     def show_img():
         return send_file("amygdala.gif", mimetype="image/gif")
 
-    # --- Dissociate by terms ---
+    # ----------------------------------------
+    # 1️⃣ Dissociate by TERMS (A \ B)
+    # ----------------------------------------
     @app.get("/dissociate/terms/<term_a>/<term_b>", endpoint="terms_dissociate")
     def dissociate_terms(term_a, term_b):
         eng = get_engine()
@@ -36,15 +45,14 @@ def create_app():
         try:
             with eng.begin() as conn:
                 conn.execute(text("SET search_path TO ns, public;"))
-                # 查出包含 term_a 但不包含 term_b 的 study_id
                 sql = text("""
                     SELECT DISTINCT a.study_id
-                    FROM annotations_terms a
+                    FROM ns.annotations_terms a
                     WHERE LOWER(a.term) = LOWER(:term_a)
-                    AND a.study_id NOT IN (
-                        SELECT study_id FROM annotations_terms WHERE LOWER(term) = LOWER(:term_b)
-                    )
-                    LIMIT 20
+                      AND a.study_id NOT IN (
+                          SELECT study_id FROM ns.annotations_terms WHERE LOWER(term) = LOWER(:term_b)
+                      )
+                    LIMIT 50
                 """)
                 rows = conn.execute(sql, {"term_a": term_a, "term_b": term_b}).all()
                 payload["studies"] = [r[0] for r in rows]
@@ -54,7 +62,10 @@ def create_app():
             payload["error"] = str(e)
             return jsonify(payload), 500
 
-    # --- Dissociate by coordinates ---
+
+    # ----------------------------------------
+    # 2️⃣ Dissociate by COORDINATES (A \ B)
+    # ----------------------------------------
     @app.get("/dissociate/locations/<coords_a>/<coords_b>", endpoint="locations_dissociate")
     def dissociate_locations(coords_a, coords_b):
         eng = get_engine()
@@ -65,20 +76,16 @@ def create_app():
                 x1, y1, z1 = map(float, coords_a.split("_"))
                 x2, y2, z2 = map(float, coords_b.split("_"))
 
-                # 查出包含 coords_a 但不包含 coords_b 的 study_id
+                # 用 ST_DWithin 避免浮點比較誤差
                 sql = text("""
                     SELECT DISTINCT c1.study_id
-                    FROM coordinates c1
-                    WHERE ST_X(c1.geom) = :x1
-                      AND ST_Y(c1.geom) = :y1
-                      AND ST_Z(c1.geom) = :z1
+                    FROM ns.coordinates c1
+                    WHERE ST_DWithin(c1.geom, ST_MakePoint(:x1, :y1, :z1)::geometry, 2)
                       AND c1.study_id NOT IN (
-                          SELECT study_id FROM coordinates
-                          WHERE ST_X(geom) = :x2
-                            AND ST_Y(geom) = :y2
-                            AND ST_Z(geom) = :z2
+                          SELECT study_id FROM ns.coordinates
+                          WHERE ST_DWithin(geom, ST_MakePoint(:x2, :y2, :z2)::geometry, 2)
                       )
-                    LIMIT 20
+                    LIMIT 50
                 """)
                 rows = conn.execute(sql, {
                     "x1": x1, "y1": y1, "z1": z1,
@@ -93,5 +100,8 @@ def create_app():
 
     return app
 
-# WSGI entry point
+
+# -----------------------------
+# WSGI Entry Point
+# -----------------------------
 app = create_app()
