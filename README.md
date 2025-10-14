@@ -74,13 +74,13 @@ Create a PostgreSQL database (e.g., on Render).
 ### 2) Verify the connection
 
 ```bash
-python check_db.py --url "postgresql://<USER>:<PASSWORD>@<HOST>:5432/<DBNAME>"
+python check_db.py --url "postgresql://zuo_ye_user:xakyf1hS3SYpMpc2IVeE772mqm02tM1d@dpg-d3ivkebuibrs73d7cirg-a.oregon-postgres.render.com/zuo_ye"
 ```
 
 ### 3) Populate the database
 
 ```bash
-python create_db.py --url "postgresql://<USER>:<PASSWORD>@<HOST>:5432/<DBNAME>"
+python create_db.py --url "postgresql://zuo_ye_user:xakyf1hS3SYpMpc2IVeE772mqm02tM1d@dpg-d3ivkebuibrs73d7cirg-a.oregon-postgres.render.com/zuo_ye"
 ```
 
 ### 4) Run the Flask service

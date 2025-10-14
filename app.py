@@ -11,7 +11,7 @@ def get_engine():
     global _engine
     if _engine is not None:
         return _engine
-    db_url = os.getenv("DB_URL")
+    db_url = os.getenv("DB_URL") or os.getenv("DATABASE_URL")
     if not db_url:
         raise RuntimeError("Missing DB_URL (or DATABASE_URL) environment variable.")
     # Normalize old 'postgres://' scheme to 'postgresql://'
