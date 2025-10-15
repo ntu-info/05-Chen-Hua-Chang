@@ -39,23 +39,23 @@ def create_app():
     # Helper functions
     # -----------------------
     def query_terms(term_a, term_b):
-        """Return studies that contain term_a but not term_b using ILIKE + DISTINCT"""
+        """Return studies that contain term_a but not term_b"""
         eng = get_engine()
         with eng.begin() as conn:
             conn.execute(text("SET search_path TO ns, public;"))
             sql = text("""
                 SELECT DISTINCT a.study_id
                 FROM annotations_terms a
-                WHERE a.term ILIKE :term_a
+                WHERE LOWER(a.term) = LOWER(:term_a)
                   AND a.study_id NOT IN (
-                      SELECT study_id FROM annotations_terms WHERE term ILIKE :term_b
+                      SELECT study_id FROM annotations_terms WHERE LOWER(term) = LOWER(:term_b)
                   )
             """)
             rows = conn.execute(sql, {"term_a": term_a, "term_b": term_b}).all()
             return [r[0] for r in rows]
 
     def query_coords(coords_a, coords_b):
-        """Return studies that contain coords_a but not coords_b (保持原本能跑的方式)"""
+        """Return studies that contain coords_a but not coords_b"""
         x1, y1, z1 = map(float, coords_a.split("_"))
         x2, y2, z2 = map(float, coords_b.split("_"))
         eng = get_engine()
@@ -64,14 +64,14 @@ def create_app():
             sql = text("""
                 SELECT DISTINCT c1.study_id
                 FROM coordinates c1
-                WHERE c1.x = :x1
-                  AND c1.y = :y1
-                  AND c1.z = :z1
+                WHERE ST_X(c1.geom) = :x1
+                  AND ST_Y(c1.geom) = :y1
+                  AND ST_Z(c1.geom) = :z1
                   AND c1.study_id NOT IN (
                       SELECT study_id FROM coordinates
-                      WHERE x = :x2
-                        AND y = :y2
-                        AND z = :z2
+                      WHERE ST_X(geom) = :x2
+                        AND ST_Y(geom) = :y2
+                        AND ST_Z(geom) = :z2
                   )
             """)
             rows = conn.execute(sql, {"x1": x1, "y1": y1, "z1": z1,
