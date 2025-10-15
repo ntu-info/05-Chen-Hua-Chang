@@ -17,46 +17,41 @@ def get_engine():
     _engine = create_engine(db_url, pool_pre_ping=True)
     return _engine
 
-
 def create_app():
     app = Flask(__name__)
 
     # -----------------------
     # Health check
     # -----------------------
-    @app.get("/", endpoint="health")
+    @app.get("/")
     def health():
         return "<p>Server working!</p>"
 
     # -----------------------
     # Show test image
     # -----------------------
-    @app.get("/img", endpoint="show_img")
+    @app.get("/img")
     def show_img():
         return send_file("amygdala.gif", mimetype="image/gif")
 
     # -----------------------
     # Helper functions
     # -----------------------
-def query_terms(term_a, term_b):
-    """Return studies that contain term_a but not term_b"""
-    eng = get_engine()
-    with eng.begin() as conn:
-        conn.execute(text("SET search_path TO ns, public;"))
-        sql = text("""
-            SELECT DISTINCT a.study_id
-            FROM annotations_terms a
-            WHERE LOWER(a.term) ILIKE LOWER(:term_a_pattern)
-              AND a.study_id NOT IN (
-                  SELECT study_id FROM annotations_terms WHERE LOWER(term) ILIKE LOWER(:term_b_pattern)
-              )
-        """)
-        rows = conn.execute(sql, {
-            "term_a_pattern": f"%{term_a}%",
-            "term_b_pattern": f"%{term_b}%"
-        }).all()
-        return [r[0] for r in rows]
-
+    def query_terms(term_a, term_b):
+        """Return studies that contain term_a but not term_b"""
+        eng = get_engine()
+        with eng.begin() as conn:
+            conn.execute(text("SET search_path TO ns, public;"))
+            sql = text("""
+                SELECT DISTINCT study_id
+                FROM annotations_terms
+                WHERE LOWER(term) = LOWER(:term_a)
+                  AND study_id NOT IN (
+                      SELECT study_id FROM annotations_terms WHERE LOWER(term) = LOWER(:term_b)
+                  )
+            """)
+            rows = conn.execute(sql, {"term_a": term_a, "term_b": term_b}).all()
+            return [r[0] for r in rows]
 
     def query_coords(coords_a, coords_b):
         """Return studies that contain coords_a but not coords_b"""
@@ -66,12 +61,12 @@ def query_terms(term_a, term_b):
         with eng.begin() as conn:
             conn.execute(text("SET search_path TO ns, public;"))
             sql = text("""
-                SELECT DISTINCT c1.study_id
-                FROM coordinates c1
-                WHERE ST_X(c1.geom) = :x1
-                  AND ST_Y(c1.geom) = :y1
-                  AND ST_Z(c1.geom) = :z1
-                  AND c1.study_id NOT IN (
+                SELECT DISTINCT study_id
+                FROM coordinates
+                WHERE ST_X(geom) = :x1
+                  AND ST_Y(geom) = :y1
+                  AND ST_Z(geom) = :z1
+                  AND study_id NOT IN (
                       SELECT study_id FROM coordinates
                       WHERE ST_X(geom) = :x2
                         AND ST_Y(geom) = :y2
@@ -85,7 +80,7 @@ def query_terms(term_a, term_b):
     # -----------------------
     # Dissociate by terms
     # -----------------------
-    @app.get("/dissociate/terms/<term_a>/<term_b>", endpoint="terms_dissociate")
+    @app.get("/dissociate/terms/<term_a>/<term_b>")
     def dissociate_terms(term_a, term_b):
         try:
             studies = query_terms(term_a, term_b)
@@ -93,7 +88,7 @@ def query_terms(term_a, term_b):
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
-    @app.get("/dissociate/terms/<term1>/<term2>/both", endpoint="terms_dissociate_both")
+    @app.get("/dissociate/terms/<term1>/<term2>/both")
     def dissociate_terms_both(term1, term2):
         try:
             result = {
@@ -107,7 +102,7 @@ def query_terms(term_a, term_b):
     # -----------------------
     # Dissociate by coordinates
     # -----------------------
-    @app.get("/dissociate/locations/<coords_a>/<coords_b>", endpoint="locations_dissociate")
+    @app.get("/dissociate/locations/<coords_a>/<coords_b>")
     def dissociate_locations(coords_a, coords_b):
         try:
             studies = query_coords(coords_a, coords_b)
@@ -115,7 +110,7 @@ def query_terms(term_a, term_b):
         except Exception as e:
             return jsonify({"error": str(e)}), 500
 
-    @app.get("/dissociate/locations/<coords1>/<coords2>/both", endpoint="locations_dissociate_both")
+    @app.get("/dissociate/locations/<coords1>/<coords2>/both")
     def dissociate_locations_both(coords1, coords2):
         try:
             result = {
@@ -129,7 +124,7 @@ def query_terms(term_a, term_b):
     # -----------------------
     # Test DB connection
     # -----------------------
-    @app.get("/test_db", endpoint="test_db")
+    @app.get("/test_db")
     def test_db():
         eng = get_engine()
         payload = {"ok": False, "dialect": eng.dialect.name}
@@ -148,6 +143,7 @@ def query_terms(term_a, term_b):
 
     return app
 
-
+# -----------------------
 # WSGI entry point
+# -----------------------
 app = create_app()
