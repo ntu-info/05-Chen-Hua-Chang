@@ -17,6 +17,7 @@ def get_engine():
     _engine = create_engine(db_url, pool_pre_ping=True)
     return _engine
 
+
 def create_app():
     app = Flask(__name__)
 
@@ -38,24 +39,23 @@ def create_app():
     # Helper functions
     # -----------------------
     def query_terms(term_a, term_b):
-        """Return studies that contain term_a but not term_b (fuzzy, case-insensitive)"""
+        """Return studies that contain term_a but not term_b using ILIKE + DISTINCT"""
         eng = get_engine()
         with eng.begin() as conn:
             conn.execute(text("SET search_path TO ns, public;"))
             sql = text("""
                 SELECT DISTINCT a.study_id
                 FROM annotations_terms a
-                WHERE a.term ILIKE '%' || :term_a || '%'
+                WHERE a.term ILIKE :term_a
                   AND a.study_id NOT IN (
-                      SELECT study_id FROM annotations_terms WHERE term ILIKE '%' || :term_b || '%'
+                      SELECT study_id FROM annotations_terms WHERE term ILIKE :term_b
                   )
             """)
             rows = conn.execute(sql, {"term_a": term_a, "term_b": term_b}).all()
             return [r[0] for r in rows]
 
     def query_coords(coords_a, coords_b):
-        """Return studies that contain coords_a but not coords_b"""
-        # 保留修正版前能跑的寫法
+        """Return studies that contain coords_a but not coords_b (保持原本能跑的方式)"""
         x1, y1, z1 = map(float, coords_a.split("_"))
         x2, y2, z2 = map(float, coords_b.split("_"))
         eng = get_engine()
@@ -143,6 +143,7 @@ def create_app():
             return jsonify(payload), 500
 
     return app
+
 
 # WSGI entry point
 app = create_app()
