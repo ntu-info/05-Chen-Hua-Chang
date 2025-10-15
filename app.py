@@ -38,21 +38,25 @@ def create_app():
     # -----------------------
     # Helper functions
     # -----------------------
-    def query_terms(term_a, term_b):
-        """Return studies that contain term_a but not term_b"""
-        eng = get_engine()
-        with eng.begin() as conn:
-            conn.execute(text("SET search_path TO ns, public;"))
-            sql = text("""
-                SELECT DISTINCT a.study_id
-                FROM annotations_terms a
-                WHERE LOWER(a.term) = LOWER(:term_a)
-                  AND a.study_id NOT IN (
-                      SELECT study_id FROM annotations_terms WHERE LOWER(term) = LOWER(:term_b)
-                  )
-            """)
-            rows = conn.execute(sql, {"term_a": term_a, "term_b": term_b}).all()
-            return [r[0] for r in rows]
+def query_terms(term_a, term_b):
+    """Return studies that contain term_a but not term_b"""
+    eng = get_engine()
+    with eng.begin() as conn:
+        conn.execute(text("SET search_path TO ns, public;"))
+        sql = text("""
+            SELECT DISTINCT a.study_id
+            FROM annotations_terms a
+            WHERE LOWER(a.term) ILIKE LOWER(:term_a_pattern)
+              AND a.study_id NOT IN (
+                  SELECT study_id FROM annotations_terms WHERE LOWER(term) ILIKE LOWER(:term_b_pattern)
+              )
+        """)
+        rows = conn.execute(sql, {
+            "term_a_pattern": f"%{term_a}%",
+            "term_b_pattern": f"%{term_b}%"
+        }).all()
+        return [r[0] for r in rows]
+
 
     def query_coords(coords_a, coords_b):
         """Return studies that contain coords_a but not coords_b"""
