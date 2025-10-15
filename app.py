@@ -39,19 +39,18 @@ def create_app():
     # Helper functions
     # -----------------------
     def query_terms(term_a, term_b):
-        """Return studies that contain term_a but not term_b"""
+        """Return studies that contain term_a but not term_b, ignoring prefix and case"""
         eng = get_engine()
         with eng.begin() as conn:
             conn.execute(text("SET search_path TO ns, public;"))
-            # 修正版：去掉 term 前綴，忽略大小寫比對
             sql = text("""
                 SELECT DISTINCT a.study_id
                 FROM annotations_terms a
-                WHERE LOWER(REGEXP_REPLACE(a.term, '^terms_[^_]*__', '')) = LOWER(:term_a)
+                WHERE a.term ILIKE '%' || :term_a
                   AND a.study_id NOT IN (
                       SELECT study_id
                       FROM annotations_terms
-                      WHERE LOWER(REGEXP_REPLACE(term, '^terms_[^_]*__', '')) = LOWER(:term_b)
+                      WHERE term ILIKE '%' || :term_b
                   )
             """)
             rows = conn.execute(sql, {"term_a": term_a, "term_b": term_b}).all()
@@ -104,7 +103,7 @@ def create_app():
             return jsonify({"error": str(e)}), 500
 
     # -----------------------
-    # Dissociate by coordinates (完全保留原本，不動)
+    # Dissociate by coordinates
     # -----------------------
     @app.get("/dissociate/locations/<coords_a>/<coords_b>", endpoint="locations_dissociate")
     def dissociate_locations(coords_a, coords_b):
