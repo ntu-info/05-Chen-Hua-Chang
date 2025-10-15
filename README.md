@@ -99,8 +99,8 @@ gunicorn app:app --bind 0.0.0.0:$PORT
 
 After deployment, check the basic endpoints:
 
-- Images: `https://<your-app>.onrender.com/img`
-- DB connectivity: `https://<your-app>.onrender.com/test_db`
+- Images: `https://zero5-chen-hua-chang-1.onrender.com/img`
+- DB connectivity: `https://zero5-chen-hua-chang-1.onrender.com/test_db`
 
 ---
 
@@ -118,15 +118,15 @@ After deployment, check the basic endpoints:
 **By terms**
 
 ```bash
-curl https://<your-app>.onrender.com/dissociate/terms/posterior_cingulate/ventromedial_prefrontal
-curl https://<your-app>.onrender.com/dissociate/terms/ventromedial_prefrontal/posterior_cingulate
+curl https://zero5-chen-hua-chang-1.onrender.com/dissociate/terms/posterior_cingulate/ventromedial_prefrontal
+curl https://zero5-chen-hua-chang-1.onrender.com/dissociate/terms/ventromedial_prefrontal/posterior_cingulate
 ```
 
 **By coordinates**
 
 ```bash
-curl https://<your-app>.onrender.com/dissociate/locations/0_-52_26/-2_50_-6
-curl https://<your-app>.onrender.com/dissociate/locations/-2_50_-6/0_-52_26
+curl https://zero5-chen-hua-chang-1.onrender.com/dissociate/locations/0_-52_26/-2_50_-6
+curl https://zero5-chen-hua-chang-1.onrender.com/dissociate/locations/-2_50_-6/0_-52_26
 ```
 
 ---
